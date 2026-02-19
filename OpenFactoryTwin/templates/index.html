@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8">
+    <title>OpenFactoryTwin • Ultra Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg: #030508;
+            --card: #0a0d14;
+            --primary: #8b5cf6;
+            --secondary: #ec4899;
+            --accent: #10b981;
+            --danger: #ef4444;
+            --text: #f8fafc;
+            --text-dim: #64748b;
+            --glass: rgba(10, 13, 20, 0.8);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            padding: 2rem;
+            background-image: radial-gradient(circle at 10% 20%, rgba(139, 92, 246, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(236, 72, 153, 0.05) 0%, transparent 40%);
+            min-height: 100vh;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2.5rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -1px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: var(--card);
+            padding: 1.5rem;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(139, 92, 246, 0.2);
+        }
+
+        .stat-label {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .stat-val {
+            font-size: 2.8rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .viz-container {
+            margin-top: 2rem;
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .chart-card {
+            min-height: 450px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .machine-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .machine-card {
+            background: rgba(255, 255, 255, 0.02);
+            padding: 1.2rem;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-left: 4px solid #334155;
+            transition: all 0.3s ease;
+        }
+
+        .machine-card.WORKING {
+            border-left-color: var(--accent);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .machine-card.IDLE {
+            border-left-color: #334155;
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 100px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .WORKING .status-badge {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--accent);
+        }
+
+        .IDLE .status-badge {
+            background: rgba(100, 116, 139, 0.1);
+            color: var(--text-dim);
+        }
+
+        .log-section {
+            margin-top: 2rem;
+            background: #000;
+            border-radius: 20px;
+            padding: 1.5rem;
+            height: 200px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .log-entry {
+            margin-bottom: 0.3rem;
+            border-left: 2px solid var(--primary);
+            padding-left: 10px;
+            color: #cbd5e1;
+        }
+
+        .log-bpa {
+            border-left-color: var(--secondary);
+            color: var(--secondary);
+            font-weight: 600;
+        }
+
+        .heartbeat {
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+            opacity: 0;
+            transition: opacity 0.1s;
+        }
+
+        .heartbeat.active {
+            opacity: 1;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div>
+            <h1>OpenFactoryTwin</h1>
+            <p style="color:var(--text-dim)">Next-Gen Digital Twin Simulation • <span id="sync-status">Connected</span>
+            </p>
+        </div>
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <div id="signal-bulb" class="heartbeat"></div>
+            <div class="speed-indicator">Speed: <span id="global-speed">1.0</span>x</div>
+        </div>
+    </header>
+
+    <div class="grid">
+        <div class="card">
+            <span class="stat-label">Energy Monitor</span>
+            <div class="stat-val"><span id="energy">0.0000</span> <small
+                    style="font-size:1rem; color:var(--text-dim)">kWh</small></div>
+            <p style="margin-top:10px; font-size:0.9rem; color:var(--primary)">⚡ Live Power: <span
+                    id="instant-power">0.0</span> kW</p>
+        </div>
+        <div class="card">
+            <span class="stat-label">Production Yield</span>
+            <div class="stat-val" id="production" style="color:#fff">0</div>
+            <p style="margin-top:10px; font-size:0.9rem; color:var(--text-dim)">Units completed from start</p>
+        </div>
+        <div class="card">
+            <span class="stat-label">Sustainability Score</span>
+            <div class="stat-val" id="sustain-val" style="color:var(--accent)">0%</div>
+            <div
+                style="height:6px; background:rgba(255,255,255,0.05); border-radius:10px; margin-top:1rem; overflow:hidden">
+                <div id="sustain-bar"
+                    style="width:0%; height:100%; background:var(--accent); transition: width 0.5s ease"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="viz-container">
+        <div class="card chart-card">
+            <span class="stat-label">Real-time Energy Flux</span>
+            <div style="flex:1; position:relative; margin-top:1rem">
+                <canvas id="factoryChart"></canvas>
+            </div>
+        </div>
+        <div class="card">
+            <span class="stat-label">Machine Matrix</span>
+            <div class="machine-grid" id="machines-list">
+                <!-- Machines will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <div class="log-section" id="logs">
+        <div class="log-entry">System Bootstrap: Digital Twin Synchronized. Waiting for data...</div>
+    </div>
+
+    <script>
+        const socket = io();
+        const logsEl = document.getElementById('logs');
+        const bulb = document.getElementById('signal-bulb');
+        const ctx = document.getElementById('factoryChart').getContext('2d');
+
+        socket.on('connect', () => {
+            addLog("📡 Connection established with DTO Server.");
+            document.getElementById('sync-status').innerText = "Connected";
+            document.getElementById('sync-status').style.color = "var(--accent)";
+        });
+
+        socket.on('disconnect', () => {
+            addLog("❌ Connection lost. Reconnecting...", "log-entry");
+            document.getElementById('sync-status').innerText = "Disconnected";
+            document.getElementById('sync-status').style.color = "var(--danger)";
+        });
+
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Power Consumption (kW)',
+                    data: [],
+                    borderColor: '#8b5cf6',
+                    borderWidth: 3,
+                    tension: 0.4,
+                    fill: true,
+                    backgroundColor: 'rgba(139, 92, 246, 0.05)',
+                    pointRadius: 0,
+                    pointHoverRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { intersect: false, mode: 'index' },
+                scales: {
+                    x: { display: false },
+                    y: {
+                        grid: { color: 'rgba(255,255,255,0.03)' },
+                        ticks: { color: '#64748b' },
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+
+        function addLog(msg, isBpa = false) {
+            const div = document.createElement('div');
+            div.className = 'log-entry' + (isBpa ? ' log-bpa' : '');
+            const time = new Date().toLocaleTimeString();
+            div.innerHTML = `[${time}] ${msg}`;
+            logsEl.prepend(div);
+            if (logsEl.childNodes.length > 30) logsEl.removeChild(logsEl.lastChild);
+        }
+
+        socket.on('bpa_log', (data) => {
+            addLog(data.message, true);
+            document.getElementById('global-speed').innerText = data.speed;
+        });
+
+        socket.on('factory_update', (state) => {
+            document.getElementById('energy').innerText = state.total_energy_kwh;
+            document.getElementById('production').innerText = state.total_production;
+            document.getElementById('instant-power').innerText = state.total_power_kw;
+            document.getElementById('global-speed').innerText = state.factory_speed;
+
+            const sustain = state.sustainability_score;
+            document.getElementById('sustain-val').innerText = sustain + '%';
+            document.getElementById('sustain-bar').style.width = sustain + '%';
+            document.getElementById('sustain-val').style.color = sustain > 70 ? 'var(--accent)' : (sustain > 40 ? 'var(--primary)' : 'var(--danger)');
+
+            const list = document.getElementById('machines-list');
+            list.innerHTML = '';
+            for (let id in state.machines) {
+                const m = state.machines[id];
+                list.innerHTML += `
+                    <div class="machine-card ${m.status}">
+                        <div>
+                            <div style="font-weight:700">${m.name}</div>
+                            <div style="font-size:0.7rem; color:var(--text-dim)">Efficiency: ${m.production > 0 ? 'High' : 'Standby'}</div>
+                        </div>
+                        <div style="text-align:right">
+                            <span class="status-badge">${m.status}</span>
+                            <div style="font-weight:800; color:var(--primary); margin-top:5px">${m.consumption} kW</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            chart.data.labels.push(state.timestamp);
+            chart.data.datasets[0].data.push(state.total_power_kw);
+            if (chart.data.labels.length > 40) {
+                chart.data.labels.shift();
+                chart.data.datasets[0].data.shift();
+            }
+            chart.update('none');
+
+            // Blink heartbeat
+            bulb.classList.add('active');
+            setTimeout(() => bulb.classList.remove('active'), 100);
+        });
+    </script>
+</body>
+
+</html>

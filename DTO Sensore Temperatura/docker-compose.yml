@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  dt-sensor:
+    build: .
+    container_name: dto_temperature_sensor
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+    environment:
+      - FLASK_ENV=development
+    restart: always

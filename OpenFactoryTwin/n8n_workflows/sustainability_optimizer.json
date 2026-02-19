@@ -1,0 +1,87 @@
+[
+    {
+        "name": "Sustainability Optimizer",
+        "nodes": [
+            {
+                "parameters": {
+                    "url": "http://localhost:5001/api/state",
+                    "options": {}
+                },
+                "name": "Get Factory State",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4,
+                "position": [
+                    250,
+                    300
+                ]
+            },
+            {
+                "parameters": {
+                    "conditions": {
+                        "number": [
+                            {
+                                "value1": "={{$node[\"Get Factory State\"].json[\"sustainability_score\"]}}",
+                                "operation": "smaller",
+                                "value2": 50
+                            }
+                        ]
+                    }
+                },
+                "name": "Check Sustainability",
+                "type": "n8n-nodes-base.if",
+                "typeVersion": 1,
+                "position": [
+                    450,
+                    300
+                ]
+            },
+            {
+                "parameters": {
+                    "method": "POST",
+                    "url": "http://localhost:5001/api/optimize",
+                    "sendBody": true,
+                    "bodyParameters": {
+                        "parameters": [
+                            {
+                                "name": "action",
+                                "value": "REDUCE_SPEED_ECO_MODE"
+                            }
+                        ]
+                    },
+                    "options": {}
+                },
+                "name": "Trigger Optimization",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4,
+                "position": [
+                    650,
+                    200
+                ]
+            }
+        ],
+        "connections": {
+            "Get Factory State": {
+                "main": [
+                    [
+                        {
+                            "node": "Check Sustainability",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Check Sustainability": {
+                "main": [
+                    [
+                        {
+                            "node": "Trigger Optimization",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            }
+        }
+    }
+]

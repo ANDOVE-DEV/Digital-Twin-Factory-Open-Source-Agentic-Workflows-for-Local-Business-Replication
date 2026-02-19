@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced DTO Sensor Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        :root {
+            --bg: #0b0e14;
+            --card: #151921;
+            --primary: #00f2fe;
+            --secondary: #4facfe;
+            --accent: #ffdd57;
+            --danger: #ff4b5c;
+            --text-main: #e2e8f0;
+            --text-dim: #94a3b8;
+            --glass: rgba(21, 25, 33, 0.8);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-image: radial-gradient(circle at 50% 50%, #1a1f2e 0%, #0b0e14 100%);
+        }
+
+        header {
+            padding: 2.5rem 2rem;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        h1 {
+            font-size: 2.8rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+            letter-spacing: -2px;
+        }
+
+        .subtitle {
+            color: var(--text-dim);
+            font-size: 1.1rem;
+        }
+
+        main {
+            max-width: 1400px;
+            margin: 2rem auto;
+            width: 100%;
+            padding: 0 2rem;
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            grid-template-rows: auto 1fr;
+            gap: 2rem;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), transparent);
+        }
+
+        .stat-item {
+            margin-bottom: 2rem;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .stat-value {
+            font-size: 3.5rem;
+            font-weight: 800;
+            color: #fff;
+            line-height: 1;
+        }
+
+        .unit {
+            font-size: 1.2rem;
+            color: var(--primary);
+            vertical-align: super;
+            margin-left: 0.3rem;
+        }
+
+        .metric-mini {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .mini-val {
+            font-weight: 700;
+            color: var(--secondary);
+        }
+
+        .status-pill {
+            padding: 0.6rem 1.2rem;
+            border-radius: 100px;
+            font-size: 0.9rem;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-ok {
+            background: rgba(0, 242, 254, 0.1);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+        }
+
+        .status-warn {
+            background: rgba(255, 75, 92, 0.1);
+            color: var(--danger);
+            border: 1px solid var(--danger);
+            animation: glow 2s infinite alternate;
+        }
+
+        @keyframes glow {
+            from {
+                box-shadow: 0 0 5px var(--danger);
+            }
+
+            to {
+                box-shadow: 0 0 20px var(--danger);
+            }
+        }
+
+        .bpa-box {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 16px;
+            border-left: 4px solid var(--accent);
+        }
+
+        .bpa-title {
+            font-size: 0.7rem;
+            color: var(--accent);
+            font-weight: 800;
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+        }
+
+        .bpa-action {
+            font-size: 0.9rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .viz-card {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .plot-wrap {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 16px;
+            padding: 1rem;
+            min-height: 500px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            position: relative;
+        }
+
+        canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+
+        .console-card {
+            grid-column: span 2;
+            background: #06080c;
+            padding: 1.5rem;
+            font-family: 'JetBrains Mono', 'Monaco', monospace;
+            font-size: 0.85rem;
+            height: 250px;
+            overflow-y: auto;
+            border: 1px solid #1a1f2e;
+        }
+
+        .log {
+            margin-bottom: 0.4rem;
+            padding-left: 1.2rem;
+            position: relative;
+        }
+
+        .log::before {
+            content: '>';
+            position: absolute;
+            left: 0;
+            color: var(--primary);
+        }
+
+        .log-tag {
+            color: var(--text-dim);
+            margin-right: 0.8rem;
+        }
+
+        .log-event-warn {
+            color: var(--danger);
+            font-weight: 800;
+        }
+
+        .log-bpa {
+            color: var(--accent);
+        }
+
+        footer {
+            padding: 3rem;
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 1100px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+
+            .console-card {
+                grid-column: span 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Sense • Think • Act</h1>
+        <p class="subtitle">Digital Twin Factory | Advanced Control Unit</p>
+    </header>
+
+    <main>
+        <section class="card">
+            <div class="stat-item">
+                <span class="stat-label">Live Sensing</span>
+                <div class="stat-value" id="cur_temp">--.-<span class="unit">°C</span></div>
+            </div>
+
+            <div class="stat-item">
+                <span class="stat-label">Intelligence Status</span>
+                <div id="status_pill" class="status-pill status-ok">SYSTEM READY</div>
+            </div>
+
+            <div class="metric-mini">
+                <span class="stat-label">SMA (10)</span>
+                <span class="mini-val" id="sma_val">--.- °C</span>
+            </div>
+
+            <div class="metric-mini">
+                <span class="stat-label">Data Points</span>
+                <span class="mini-val" id="data_count">0</span>
+            </div>
+
+            <div class="bpa-box">
+                <div class="bpa-title">BPA Closed-Loop Control</div>
+                <div class="bpa-action" id="bpa_status">STANDBY</div>
+            </div>
+        </section>
+
+        <section class="card viz-card">
+            <div class="stat-label" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between;">
+                <span>Predictive Analytics Engine</span>
+                <span style="color: var(--primary); font-size: 0.6rem; letter-spacing: 1px;">LIVE STREAMING •
+                    INTERACTIVE</span>
+            </div>
+            <div class="plot-wrap">
+                <canvas id="dtChart"></canvas>
+            </div>
+        </section>
+
+        <section class="card console-card" id="console">
+            <div class="log"><span class="log-tag">INIT</span> System bootstrap complete. Initializing DTO Engine with
+                SQLite persistence...</div>
+        </section>
+    </main>
+
+    <footer>
+        &copy; 2026 Digital Twin Factory — Building Autonomous Organizations
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const socket = io();
+        const consoleEl = document.getElementById('console');
+        const ctx = document.getElementById('dtChart').getContext('2d');
+
+        // Chart.js Configuration
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: 'Real-time Temperature',
+                        data: [],
+                        borderColor: '#00f2fe',
+                        backgroundColor: 'rgba(0, 242, 254, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
+                        pointBackgroundColor: '#fff',
+                        zIndex: 10
+                    },
+                    {
+                        label: 'Moving Average (SMA)',
+                        data: [],
+                        borderColor: '#4facfe',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        pointRadius: 0,
+                        tension: 0.4,
+                        fill: false
+                    },
+                    {
+                        label: 'ML Prediction',
+                        data: [],
+                        borderColor: '#ffdd57',
+                        borderWidth: 2,
+                        borderDash: [2, 2],
+                        pointRadius: 0,
+                        tension: 0.4,
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { intersect: false, mode: 'index' },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: '#94a3b8', font: { family: 'Outfit', size: 10 } }
+                    },
+                    y: {
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: '#94a3b8', font: { family: 'Outfit', size: 10 } },
+                        suggestedMin: 15,
+                        suggestedMax: 35
+                    }
+                },
+                plugins: {
+                    legend: { position: 'top', align: 'end', labels: { color: '#94a3b8', font: { family: 'Outfit' }, boxWidth: 10 } },
+                    tooltip: {
+                        backgroundColor: 'rgba(15, 25, 33, 0.95)',
+                        titleFont: { family: 'Outfit', size: 14 },
+                        bodyFont: { family: 'Outfit', size: 13 },
+                        padding: 12,
+                        borderColor: 'rgba(255,255,255,0.1)',
+                        borderWidth: 1
+                    }
+                }
+            }
+        });
+
+        function addLog(msg, type = '') {
+            const div = document.createElement('div');
+            div.className = 'log ' + type;
+            const now = new Date().toLocaleTimeString();
+            div.innerHTML = `<span class="log-tag">${now}</span> ${msg}`;
+            consoleEl.prepend(div);
+            if (consoleEl.childNodes.length > 40) consoleEl.removeChild(consoleEl.lastChild);
+        }
+
+        socket.on('new_reading', (data) => {
+            // Update Text UI
+            document.getElementById('cur_temp').innerHTML = data.temperature + '<span class="unit">°C</span>';
+            document.getElementById('sma_val').innerText = (data.summary.sma || '--.-') + ' °C';
+            document.getElementById('data_count').innerText = data.summary.history_count;
+
+            const pill = document.getElementById('status_pill');
+            const bpaStatus = document.getElementById('bpa_status');
+
+            if (data.summary.status.includes('ALARM')) {
+                pill.className = 'status-pill status-warn';
+                pill.innerText = 'ANOMALY DETECTED';
+                addLog(`<span class="log-event-warn">ALARM!</span> Temperature spike: ${data.temperature}°C`, 'log-event-warn');
+            } else {
+                pill.className = 'status-pill status-ok';
+                pill.innerText = 'SYSTEM STABLE';
+            }
+
+            // Update BPA UI
+            if (data.bpa_action && data.bpa_action !== "None") {
+                bpaStatus.innerText = data.bpa_action;
+                bpaStatus.style.color = '#ffdd57';
+                if (data.bpa_last_result) {
+                    addLog(`<span class="log-bpa">BPA:</span> Executed ${data.bpa_action}. Intervention applied.`, 'log-bpa');
+                }
+            } else {
+                bpaStatus.innerText = 'STANDBY';
+                bpaStatus.style.color = '#94a3b8';
+            }
+
+            // --- CHART UPDATE LOGIC ---
+            const labels = chart.data.labels;
+            const tempSet = chart.data.datasets[0].data;
+            const smaSet = chart.data.datasets[1].data;
+            const predSet = chart.data.datasets[2].data;
+
+            // Add new data
+            labels.push(data.timestamp);
+            tempSet.push(data.temperature);
+            smaSet.push(data.summary.sma || null);
+
+            // Fetch and set predictions (aligned to the future)
+            // Note: Since Chart.js line charts match indices, we might need a separate strategy for predictions
+            // For now, we update correctly
+            if (data.predictions) {
+                // We show prediction starting from the current point
+                const currentLen = tempSet.length;
+                // Clear old predictions
+                predSet.length = 0;
+                // Fill with nulls up to the current last point
+                for (let i = 0; i < currentLen - 1; i++) predSet.push(null);
+                // Last actual temp point is the start of prediction
+                predSet.push(data.temperature);
+                // Add predicted points
+                data.predictions.forEach(p => predSet.push(p));
+
+                // Add ghost labels for predictions if they exceed current labels
+                while (labels.length < predSet.length) {
+                    labels.push("Future");
+                }
+            }
+
+            // Limit history (sliding window)
+            if (labels.length > 30) {
+                labels.shift();
+                tempSet.shift();
+                smaSet.shift();
+                if (predSet.length > labels.length) predSet.shift();
+            }
+
+            chart.update('none'); // Update without animation for performance
+        });
+    </script>
+</body>
+
+</html>

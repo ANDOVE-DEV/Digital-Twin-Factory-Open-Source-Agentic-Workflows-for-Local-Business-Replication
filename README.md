@@ -25,6 +25,21 @@ Il progetto è diviso in due skill fondamentali e interconnesse:
 
 ---
 
+## 🏗️ Progetti Demo Live
+Esempi pratici di implementazione Sense-Think-Act inclusi in questo repository:
+
+1. **[DTO Sensore Temperatura](./DTO%20Sensore%20Temperatura)**: 
+   - Monitoraggio real-time con regressione lineare per predizioni ML.
+   - Closed-loop con BPA per gestione anomalie termiche.
+   - Dashboard interattiva in Chart.js.
+
+2. **[OpenFactoryTwin](./OpenFactoryTwin)**:
+   - Simulazione di una mini-fabbrica con 3 macchine (Taglio, Assemblaggio, Confezionamento).
+   - Ottimizzazione energetica guidata da n8n (Sustainabilty-First).
+   - Modellazione scientifica del consumo energetico tramite Jupyter Notebook.
+
+---
+
 ## 🔗 Integrazione Sense-Decide-Act
 
 Le due skill lavorano in un loop chiuso (Closed-Loop Management):
