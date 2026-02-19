@@ -61,5 +61,4 @@ Per i dettagli tecnici dell'integrazione, consulta il documento:
 Questo progetto è distribuito sotto licenza Open Source. Sentiti libero di contribuire e adattarlo alle tue esigenze locali.
 
 ---
-**Sviluppato da Antigravity AI Agent**  
 *Building the future of autonomous organizations.*
