@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8">
+    <title>GreenAI • Premium Bio-Twin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap"
+        rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        :root {
+            --bg: #020403;
+            --card: rgba(10, 20, 17, 0.7);
+            --primary: #10b981;
+            --secondary: #34d399;
+            --accent: #fbbf24;
+            --danger: #ef4444;
+            --text: #f0fdf4;
+            --text-dim: rgba(240, 253, 244, 0.4);
+            --glass-border: rgba(16, 185, 129, 0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            padding: 2.5rem;
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-image:
+                radial-gradient(circle at 10% 10%, rgba(16, 185, 129, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 90% 90%, rgba(52, 211, 153, 0.05) 0%, transparent 40%);
+        }
+
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 3.5rem;
+            transition: 0.5s;
+        }
+
+        .logo-group h1 {
+            font-size: 2.8rem;
+            font-weight: 800;
+            letter-spacing: -1px;
+            background: linear-gradient(135deg, #fff, var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--card);
+            backdrop-filter: blur(20px);
+            padding: 2rem;
+            border-radius: 32px;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            opacity: 0.3;
+        }
+
+        .label {
+            color: var(--text-dim);
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .value {
+            font-size: 3rem;
+            font-weight: 800;
+            line-height: 1;
+            display: flex;
+            align-items: baseline;
+        }
+
+        .symbol {
+            font-size: 1rem;
+            color: var(--primary);
+            margin-left: 4px;
+            opacity: 0.8;
+        }
+
+        .main-viz {
+            display: grid;
+            grid-template-columns: 1.5fr 2fr 1.2fr;
+            gap: 1.5rem;
+            height: 550px;
+        }
+
+        .panel {
+            background: var(--card);
+            backdrop-filter: blur(20px);
+            border-radius: 40px;
+            border: 1px solid var(--glass-border);
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #three-canvas-container {
+            cursor: grab;
+            background: radial-gradient(circle at center, #0f2a22 0%, #020403 100%);
+        }
+
+        #three-canvas-container:active {
+            cursor: grabbing;
+        }
+
+        .bio-terminal {
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .log-container {
+            flex: 1;
+            overflow-y: auto;
+            margin-top: 1.5rem;
+            padding-right: 10px;
+        }
+
+        .log-container::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .log-container::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 10px;
+        }
+
+        .entry {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            margin-bottom: 12px;
+            border-left: 2px solid var(--primary);
+            padding-left: 12px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .btn-action {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            padding: 0.8rem 1.8rem;
+            border-radius: 100px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.3s;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+        }
+
+        .btn-action:hover {
+            background: var(--primary);
+            color: #000;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+        }
+
+        .badge {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--primary);
+            padding: 4px 12px;
+            border-radius: 100px;
+            font-size: 0.7rem;
+            font-weight: 800;
+        }
+
+        .badge.alert {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+            border: 1px solid var(--danger);
+        }
+
+        .progress-mini {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            margin-top: 1.5rem;
+        }
+
+        .fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="nav">
+        <div class="logo-group">
+            <h1>GreenAI</h1>
+            <p style="color:var(--text-dim); font-weight:600">Autonomous Biological Digital Twin • V2.5 Professional</p>
+        </div>
+        <div style="display: flex; gap: 15px;">
+            <div id="connection-badge" class="badge">DTO CONNECTED</div>
+            <button class="btn-action" onclick="applyIrrigation()">Irrigate 💧</button>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+        <div class="stat-card">
+            <span class="label">Soil Moisture</span>
+            <div class="value" id="val-moisture">0<span class="symbol">%</span></div>
+            <div class="progress-mini">
+                <div id="fill-moisture" class="fill" style="background: #3b82f6;"></div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <span class="label">Bio-Nutrients</span>
+            <div class="value" id="val-nutrients">0<span class="symbol">%</span></div>
+            <div class="progress-mini">
+                <div id="fill-nutrients" class="fill" style="background: var(--accent);"></div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <span class="label">Growth Stage</span>
+            <div class="value" id="val-growth">0<span class="symbol">%</span></div>
+            <div class="progress-mini">
+                <div id="fill-growth" class="fill" style="background: var(--secondary);"></div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <span class="label">Overall Health</span>
+            <div class="value" id="val-health">0<span class="symbol">pts</span></div>
+            <div class="progress-mini">
+                <div id="fill-health" class="fill" style="background: var(--primary);"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-viz">
+        <div class="panel" id="plotly-panel">
+            <div id="live-chart" style="height: 100%;"></div>
+        </div>
+        <div class="panel" id="three-canvas-container">
+            <div style="position:absolute; top:30px; left:30px; z-index:10;">
+                <span class="label">Living 3D Model</span>
+                <div id="plant-status-badge" class="badge">SCANNING...</div>
+            </div>
+        </div>
+        <div class="panel bio-terminal">
+            <span class="label">Biological Events</span>
+            <div class="log-container" id="terminal">
+                <div class="entry">Kernel Booting... Bio-Logical interface active.</div>
+                <div class="entry">DTO Syncing with local sensor array...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- PRO 3D ENGINE (Three.js) ---
+        const container = document.getElementById('three-canvas-container');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.shadowMap.enabled = true;
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.5;
+
+        // Lighting Complex
+        const ambL = new THREE.AmbientLight(0xffffff, 0.4);
+        scene.add(ambL);
+        const mainSpot = new THREE.SpotLight(0x10b981, 2);
+        mainSpot.position.set(5, 10, 5);
+        mainSpot.castShadow = true;
+        scene.add(mainSpot);
+
+        // Environment: Pot & Soil
+        const potGeo = new THREE.CylinderGeometry(1.2, 0.9, 1.2, 32);
+        const potMat = new THREE.MeshPhysicalMaterial({ color: 0x1a1a1a, roughness: 0.2, metalness: 0.1 });
+        const pot = new THREE.Mesh(potGeo, potMat);
+        pot.position.y = -1;
+        scene.add(pot);
+
+        const soilGeo = new THREE.CircleGeometry(1.15, 32);
+        const soilMat = new THREE.MeshStandardMaterial({ color: 0x241d18, roughness: 1 });
+        const soil = new THREE.Mesh(soilGeo, soilMat);
+        soil.rotation.x = -Math.PI / 2;
+        soil.position.y = -0.4;
+        scene.add(soil);
+
+        // Plant Logic
+        const plantRoot = new THREE.Group();
+        scene.add(plantRoot);
+
+        const stemMat = new THREE.MeshStandardMaterial({ color: 0x064e3b });
+        const leafMat = new THREE.MeshStandardMaterial({ color: 0x10b981, side: THREE.DoubleSide });
+
+        let leaves = [];
+
+        function update3DModel(data) {
+            const growth = data.growth_stage;
+            const health = data.health;
+
+            // Scalatura stelo
+            plantRoot.scale.set(0.2 + (growth / 100) * 1.8, 0.2 + (growth / 100) * 1.8, 0.2 + (growth / 100) * 1.8);
+
+            // Reattività salute
+            if (health < 40 || data.status === "THIRSTY") {
+                leafMat.color.setHex(0x78350f); // Marrone appassito
+                plantRoot.rotation.x = 0.3;
+            } else {
+                leafMat.color.setHex(0x10b981);
+                plantRoot.rotation.x = 0;
+            }
+
+            // Generazione foglie procedurale
+            const targetCount = Math.floor(growth / 3);
+            if (leaves.length < targetCount) {
+                for (let i = leaves.length; i < targetCount; i++) {
+                    const lGeo = new THREE.SphereGeometry(0.5, 12, 12);
+                    const leaf = new THREE.Mesh(lGeo, leafMat);
+                    leaf.scale.set(1.5, 0.1, 0.8);
+                    leaf.position.y = Math.random() * 2;
+                    leaf.position.x = (Math.random() - 0.5) * 1.5;
+                    leaf.position.z = (Math.random() - 0.5) * 1.5;
+                    leaf.rotation.set(Math.random(), Math.random(), Math.random());
+                    plantRoot.add(leaf);
+                    leaves.push(leaf);
+                }
+            }
+        }
+
+        camera.position.set(5, 5, 8);
+        controls.update();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // --- DATA ENGINE ---
+        const socket = io();
+        let chartData = { t: [], m: [], n: [] };
+
+        socket.on('bio_update', (data) => {
+            // Stats Update
+            document.getElementById('val-moisture').innerHTML = data.soil_moisture + '<span class="symbol">%</span>';
+            document.getElementById('val-nutrients').innerHTML = data.nutrients + '<span class="symbol">%</span>';
+            document.getElementById('val-growth').innerHTML = data.growth_stage.toFixed(2) + '<span class="symbol">%</span>';
+            document.getElementById('val-health').innerHTML = data.health.toFixed(0) + '<span class="symbol">pts</span>';
+
+            document.getElementById('fill-moisture').style.width = data.soil_moisture + '%';
+            document.getElementById('fill-nutrients').style.width = data.nutrients + '%';
+            document.getElementById('fill-growth').style.width = data.growth_stage + '%';
+            document.getElementById('fill-health').style.width = data.health + '%';
+
+            const statusBadge = document.getElementById('plant-status-badge');
+            statusBadge.innerText = data.status;
+            statusBadge.style.color = (data.status === "HEALTHY" ? "var(--primary)" : "var(--danger)");
+
+            // 3D Update
+            update3DModel(data);
+
+            // Chart Update
+            chartData.t.push(data.timestamp);
+            chartData.m.push(data.soil_moisture);
+            chartData.n.push(data.nutrients);
+            if (chartData.t.length > 20) { chartData.t.shift(); chartData.m.shift(); chartData.n.shift(); }
+            updateChart();
+        });
+
+        socket.on('bpa_alert', (data) => addLog(`⚠️ ${data.message}`, true));
+
+        function addLog(msg, isAlert = false) {
+            const terminal = document.getElementById('terminal');
+            const entry = document.createElement('div');
+            entry.className = 'entry';
+            if (isAlert) entry.style.color = 'var(--danger)';
+            entry.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            terminal.prepend(entry);
+        }
+
+        function applyIrrigation() {
+            addLog("Command: Triggering localized irrigation...");
+            fetch('/api/water', { method: 'POST' }).then(r => r.json());
+        }
+
+        function updateChart() {
+            const traces = [
+                { x: chartData.t, y: chartData.m, name: 'Moisture', line: { color: '#3b82f6', width: 3, shape: 'spline' }, fill: 'tozeroy' },
+                { x: chartData.t, y: chartData.n, name: 'Nutrients', line: { color: '#fbbf24', width: 3, shape: 'spline' } }
+            ];
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                margin: { t: 40, b: 40, l: 40, r: 20 },
+                xaxis: { showgrid: false, font: { color: '#666' } },
+                yaxis: { gridcolor: 'rgba(255,255,255,0.05)', font: { color: '#666' } },
+                legend: { font: { color: '#eee' }, orientation: 'h', y: 1.1 }
+            };
+            Plotly.newPlot('live-chart', traces, layout, { responsive: true, displayModeBar: false });
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+    </script>
+</body>
+
+</html>

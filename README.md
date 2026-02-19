@@ -34,9 +34,13 @@ Esempi pratici di implementazione Sense-Think-Act inclusi in questo repository:
    - Dashboard interattiva in Chart.js.
 
 2. **[OpenFactoryTwin](./OpenFactoryTwin)**:
-   - Simulazione di una mini-fabbrica con 3 macchine (Taglio, Assemblaggio, Confezionamento).
-   - Ottimizzazione energetica guidata da n8n (Sustainabilty-First).
-   - Modellazione scientifica del consumo energetico tramite Jupyter Notebook.
+   - Simulazione di una mini-fabbrica con 3 macchine.
+   - Ottimizzazione energetica guidata da n8n.
+
+3. **[GreenAI PlantTwin](./GreenAI_PlantTwin)**:
+   - Bio-Twin High-Fidelity con modellazione 3D (Three.js).
+   - Simulazione complessa: evapotraspirazione, nutrienti e umidità.
+   - Dashboard professionale in Glassmorphism e automazione n8n.
 
 ---
 

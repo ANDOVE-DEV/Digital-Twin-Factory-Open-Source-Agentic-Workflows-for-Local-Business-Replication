@@ -1,0 +1,9 @@
+flask
+flask-socketio
+numpy
+pandas
+scikit-learn
+plotly
+python-dotenv
+eventlet
+scipy
