@@ -57,9 +57,38 @@ Per i dettagli tecnici dell'integrazione, consulta il documento:
 
 ---
 
-## 🚀 Come Iniziare
+## 🚀 Come Iniziare (Setup Locale)
 
-1. Esplora le cartelle nella directory `skills/`.
+La repository include un ambiente Docker pronto all'uso che istanzia l'infrastruttura di base (Database a Grafo, Motore Workflow, Event Bus, Motore DTO). È il modo più veloce per testare l'integrazione DTO ↔ BPA nella tua macchina.
+
+### Prerequisiti
+- [Docker](https://docs.docker.com/get-docker/) e Docker Compose installati.
+
+### Avvio della Fabbrica Locale
+1. Clona la repository ed entra nella cartella principale:
+   ```bash
+   git clone https://github.com/tuo-user/Digital-Twin-Factory.git
+   cd Digital-Twin-Factory
+   ```
+2. Avvia i servizi in background:
+   ```bash
+   docker compose up -d
+   ```
+3. Verifica i servizi attivi:
+   - **n8n (BPA Workflow Engine)**: http://localhost:5678
+   - **Neo4j (DTO Graph Model Layer)**: http://localhost:7474 (user: `neo4j`, pass: `dtf-secret-password`)
+   - **FastAPI (DTO Core Engine Base)**: http://localhost:8000
+   - **Redis (Event Bus)**: in ascolto sulla porta `6379` interne al network Docker.
+
+Una volta accesa l'infrastruttura, puoi iniziare a sviluppare la logica del tuo gemello digitale modificando il file `core_engine/main.py`.
+
+---
+
+## 📚 Esplorazione e Guide
+
+Se desideri studiare la teoria o lanciare le singole demo standalone (senza l'infrastruttura Docker globale descritta sopra):
+
+1. Esplora le cartelle nella directory `skills/` per comprendere i ruoli degli agenti.
 2. Consulta i **Playbook** nelle sottocartelle `resources/` per esempi di codice e guide passo-passo.
 3. Segui la **Checklist di Implementazione** fornita in ogni playbook.
 
